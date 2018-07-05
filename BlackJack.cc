@@ -153,42 +153,47 @@ int8_t bjSum(const std::vector<Vegas::Card>& cards, bool* isSoft) noexcept {
 }
 
 void Player::playHand(Game& game) {
-    for (auto& stack : state.stacks) {
+    for (size_t i = 0; i < state.stacks.size(); ++i) {
+        // NB: we may grow the number of stacks within this loop
+        auto* stack = &state.stacks[i];
         bool stay = false;
-        while (bjSum(stack.cards) < 21 && !stack.isDoubleDown &&
-               !stack.isSplitAceLocked && !stay) {
+        while (bjSum(stack->cards) < 21 && !stack->isDoubleDown &&
+               !stack->isSplitAceLocked && !stay) {
 
             switch (auto choice = strategy->chooseAction(
-                        stack, game.dealerCard(), game.getCount());
+                        *stack, game.dealerCard(), game.getCount());
                     choice) {
             case Action::Stay:
                 stay = true;
                 break;
             case Action::Split: {
-                if (stack.cards.size() != 2 ||
-                    stack.cards.front().value() != stack.cards.back().value()) {
+                if (stack->cards.size() != 2 ||
+                    stack->cards.front().value() !=
+                        stack->cards.back().value()) {
                     throw StrategyError("Illegal Split with cards "s +
-                                        stack.cards.front().toString() + " "s +
-                                        stack.cards.back().toString());
+                                        stack->cards.front().toString() + " "s +
+                                        stack->cards.back().toString());
                 }
                 auto& newStack = state.stacks.emplace_back();
-                newStack.cards.push_back(stack.cards.back());
-                stack.cards.pop_back();
-                if (stack.cards.front().value() == Vegas::CardValue::Ace) {
-                    stack.isSplitAceLocked = newStack.isSplitAceLocked = true;
-                    stack.cards.push_back(game.drawPublic());
+                // stack reference potentially invalidated
+                stack = &state.stacks[i];
+                newStack.cards.push_back(stack->cards.back());
+                stack->cards.pop_back();
+                if (stack->cards.front().value() == Vegas::CardValue::Ace) {
+                    stack->isSplitAceLocked = newStack.isSplitAceLocked = true;
+                    stack->cards.push_back(game.drawPublic());
                     newStack.cards.push_back(game.drawPublic());
                 }
                 break;
             }
             case Action::DoubleDown:
-                if (stack.cards.size() != 2 || stack.isSplitAceLocked) {
+                if (stack->cards.size() != 2 || stack->isSplitAceLocked) {
                     throw StrategyError("Illegal double down");
                 }
-                stack.isDoubleDown = true;
+                stack->isDoubleDown = true;
                 [[fallthrough]];
             case Action::Hit:
-                stack.cards.push_back(game.drawPublic());
+                stack->cards.push_back(game.drawPublic());
                 break;
 
             default:

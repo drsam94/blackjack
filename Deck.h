@@ -23,6 +23,7 @@ template <size_t NumDecks = 1> class Deck {
 
     void shuffle(std::mt19937& rnd) noexcept {
         std::shuffle(cards.begin(), cards.end(), rnd);
+        nextCardIndex = 0;
     }
 
     constexpr Card nextCard() noexcept { return cards[nextCardIndex++]; }
